@@ -15,49 +15,65 @@
 # parameters for each rule are listed with -
 # all parameters must be met for content to be flagged
 
+base_score:
+  critical: 5
+  high (higher): 4
+  high: 3
+  high (lower): 2
+  moderate: 1
+
 rules:
-  user_relevance:
-    strong candidate for review:
-      no traffic:
-        html:
-          - file_extension == "html"
-          - sessions == 0
-        pdf:
-          - file_extension == "pdf"
-          - file_download_navigated == 0
-    weak candidate for review:
-      Rarely visited:
-        html:
-          - file_extension == "html"
-          - sessions > 0
-          - sessions < 100
-        pdf:
-          - file_extension == "pdf"
-          - file_download_navigated > 0
-          - file_download_navigated < 100
-  usability:
-    weak candidate for review:
-      non-html:
+  accessibility:
+    critical:
+      Post-2018 content with no accessible alternative:
         - file_extension == "pdf"
-        - has_accessible_version == false
-      poor readability:
-        - file_extension == "html"
+        - screaming_frog_available == True
+        - is_pdf_with_accessible_version == False
+        - pdf_modified >= 2018-09-23
+    high (lower):
+      Pre-2018 content with no accessible alternative:
+        - file_extension == "pdf"
+        - screaming_frog_available == True
+        - is_pdf_with_accessible_version == False
+        - pdf_modified < 2018-09-23
+    high:
+      Content is hard to read (dense, complex language):
         - flesch_reading_ease_score < 50
-      popular pdf with no html equivalent:
-        - file_extension == "pdf"
-        - has_accessible_version == false
-        - file_download_navigated > 500
+      Content is hard to scan (poor headings / structure):
+        - word_to_heading_ratio > 500
+  functionality:
+    critical:
+      Page returns an error (e.g. 404):
+        - is_broken == true
+      3 or more broken links:
+        - n_broken_links >= 3
+      2 broken links, over half of links on page broken:
+        - n_broken_links == 2
+        - broken_link_ratio > 0.5
+    high (higher):
+      2 broken links:
+        - n_broken_links == 2
+        - broken_link_ratio <= 0.5
+    high:
+      1 broken link:
+        - n_broken_links == 1
+  # freshness_score itself is NOT taken from base_score above - it's computed
+  # as a continuous function of content age (see freshness_age_score in
+  # RuleEngine.py) so the score ramps smoothly between anchor points (0yrs->0,
+  # 3yrs->1, 5yrs->2, 10yrs->3, capped at 3 beyond 10yrs) instead of jumping at
+  # band boundaries. The bands below only drive the flag/reason text shown to
+  # users.
   freshness:
-    strong candidate for review:
-      no updates in last 10 years:
+    high:
+      No updates for 10+ years:
         html:
           - file_extension == "html"
           - public_updated_at < CURRENT_DATE - 10 years
         pdf:
           - file_extension == "pdf"
           - pdf_modified < CURRENT_DATE - 10 years
-    weak candidate for review:
-      no updates in last 5 years:
+    high (lower):
+      No updates in the last 5-10 years:
         html:
           - file_extension == "html"
           - public_updated_at < CURRENT_DATE - 5 years
@@ -66,58 +82,59 @@ rules:
           - file_extension == "pdf"
           - pdf_modified < CURRENT_DATE - 5 years
           - pdf_modified > CURRENT_DATE - 10 years
+    moderate:
+      No updates in the last 3-5 years:
+        html:
+          - file_extension == "html"
+          - public_updated_at < CURRENT_DATE - 3 years
+          - public_updated_at > CURRENT_DATE - 5 years
+        pdf:
+          - file_extension == "pdf"
+          - pdf_modified < CURRENT_DATE - 3 years
+          - pdf_modified > CURRENT_DATE - 5 years
 
+  negative_user_engagement:
+    moderate:
+      Eng time per session falls below P10 threshold:
+        - engagement_rank < 0.1
+        
+  demand:
+    true:
+      No Demand:
+        - demand_rank == 0
+      Low:
+        - demand_rank > 0
+        - demand_rank <= 0.2
+      Medium:
+        - demand_rank > 0.2
+        - demand_rank <= 0.75
+      High:
+        - demand_rank > 0.75
+        - demand_rank <= 0.95
+      Very High:
+        - demand_rank > 0.95
+        
+  exclusions:
+    true:
+      data quality:
+        - publishing_app IN ["Publisher", "hmrc-manuals-api"]
 
-# if a content has all of these flags, it will automatically gain the new
-# recommendation level.
-
-interactions:
-  strong candidate for removal:
-    - all:
-      - "no traffic"
-      - "no updates in last 10 years"
-  moderate candidate for removal:
-    - all:
-      - "no traffic"
-      - "no updates in last 5 years"
-    - all:
-      - "no updates in last 10 years"
-      - "rarely visited"
-  consider converting to html:
-    - all:
-      - "popular pdf with no html equivalent"
-
-# recommendation levels from strongest to weakest:
-  # strong candidate for removal
-  # moderate candidate for removal
-  # weak candidate for removal
-  # strong candidate for review
-  # moderate candidate for review
-  # weak candidate for review
-  # not flagged
-
-# 1 or more "strong candidate for review" flags:
-  # strong review recommendation
-
-# otherwise:
-# 3 moderate or weak review flags:
-  # strong review recommendation
-
-# otherwise:
-# 2 moderate or weak review flags:
-  # moderate review recommendation
-
-# otherwise:
-# 1 moderate review flags:
-  # moderate review recommendation
-
-# otherwise:
-# 1 weak review flags:
-  # weak review recommendation
-
-
-# otherwise:
-# no flags:
-  # not flagged recommendation
-
-#  interactions take priorty if they give a higher recommendation than the rules would otherwise give it
+  ranking:
+    true:
+      # all non-HTML content issues are derived from Screaming Frog atm, so
+      # missing public_updated_at / engagement_time_secs isn't checked for those
+      Incomplete audit data:
+        html_no_screaming_frog:
+          - file_extension == "html"
+          - screaming_frog_available == False
+        html_no_updated_at:
+          - file_extension == "html"
+          - public_updated_at IS NULL
+        html_no_engagement:
+          - file_extension == "html"
+          - engagement_time_secs IS NULL
+        non_html_no_screaming_frog:
+          - file_extension != "html"
+          - screaming_frog_available == False
+      Withdrawn content:
+        - withdrawn == True

@@ -4,8 +4,7 @@ import re
 import pandas as pd
 import streamlit as st
 import numpy as np
-import *database_connection*
-
+from dwutils import db, s3
 
 class parameter_index_generator:
     def __init__(self, label="p_"):
@@ -23,7 +22,7 @@ class parameter_index_generator:
 
 
 def create_column_definition_text():
-    d = *database_connection*.query("select column_name, definition from data_dictionaries where table_name = 'table_name'")
+    d = db.query("select column_name, definition from public.dataworkspace__data_dictionaries where table_name = 'dbt.gov_uk_content__regulation_xd'")
     # capitalise column name
     d.loc[:, "column_name"] = d["column_name"].apply(lambda row: row.replace("_", " ").title())
     d[['definition', 'source']] = d['definition'].str.split("\n", n=1, expand=True)
@@ -61,7 +60,8 @@ def load_data_with_filters(current_filters=None, method="all", columns="*"):
     if isinstance(columns, list):
         columns = ", ".join(columns)
 
-    query = f"select {columns} from table_name"
+    #query = f"select {columns} from dbt.gov_uk_content__regulation_xd"
+    query = f"select {columns} from _team_analysis_group_ds.gov_uk_audit_master"
 
     all_criteria = []
     all_parameters = {}
@@ -151,7 +151,7 @@ def load_data_with_filters(current_filters=None, method="all", columns="*"):
     
             query = f"{query} WHERE {where_conds}"
 
-    all_data = *database_connection*.query(query, params=all_parameters)
+    all_data = db.query(query, params=all_parameters)
 
     date_columns = [
         # "non_html_last_modified",
@@ -163,7 +163,14 @@ def load_data_with_filters(current_filters=None, method="all", columns="*"):
     for col in date_columns:
         all_data[col] = pd.to_datetime(all_data[col])
 
-    list_cols = ["publishing_orgs", "categories", 'freshness_reasons', 'user_relevance_reasons', 'usability_reasons']
+    list_cols = [
+        "publishing_orgs",
+        "categories",
+        "negative_user_engagement_reasons",
+        "accessibility_reasons",
+        "freshness_reasons",
+        "functionality_reasons"
+    ]
 
     for col in list_cols:
         all_data[col] = all_data[col].apply(eval)
