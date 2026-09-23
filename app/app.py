@@ -106,7 +106,7 @@ if "data" not in st.session_state:
         'normalized_score',
         'score_multiplier', 
         'adjusted_score',
-        'issue_summary'
+        'issue_summary',
         'recommendation',
         'recommend_convert', 
         'recommend_transfer_to_tna',
@@ -409,7 +409,7 @@ with main_tab:
                 'negative_user_engagement_score', 
                 'freshness_score', 
                 'base_score',
-                'normalized_score'
+                'normalized_score',
                 'score_multiplier', 
                 'adjusted_score',
                 'issue_summary',
