@@ -21,8 +21,8 @@ class parameter_index_generator:
 
 
 
-def create_column_definition_text():
-    d = db.query("select column_name, definition from public.dataworkspace__data_dictionaries where table_name = 'dbt.gov_uk_content__regulation_xd'")
+def create_column_definition_text(table_name):
+    d = db.query(f"select column_name, definition from data_dictionaries where table_name = {table_name}")
     # capitalise column name
     d.loc[:, "column_name"] = d["column_name"].apply(lambda row: row.replace("_", " ").title())
     d[['definition', 'source']] = d['definition'].str.split("\n", n=1, expand=True)
@@ -60,8 +60,8 @@ def load_data_with_filters(current_filters=None, method="all", columns="*"):
     if isinstance(columns, list):
         columns = ", ".join(columns)
 
-    #query = f"select {columns} from dbt.gov_uk_content__regulation_xd"
-    query = f"select {columns} from _team_analysis_group_ds.gov_uk_audit_master"
+
+    query = f"select {columns} from *table_name*"
 
     all_criteria = []
     all_parameters = {}
