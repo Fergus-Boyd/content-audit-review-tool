@@ -1,7 +1,7 @@
 # Data Transformation
 
 This readme file explains how content, analytics, and crawl data are cleaned, standardised and joined together.
-This readme DOES NOT cover data collection, which is handled through various different pipelines.
+This notebook DOES NOT cover data collection, which is handled through various different pipelines.
 All functions needed for this process can be found in the `data_creation` module:
 
  ```
@@ -160,7 +160,7 @@ This is the final output, therefore we must write it to the catalogue.
 
 ```
 data = create_full_data()
-write_to_catalogue(data, "schema_name", "table_name",
+write_to_catalogue(data, "dbt", "gov_uk_content__regulation_xd",
                     convert_cols=["publishing_orgs", "categories", 'freshness_reasons', 'user_relevance_reasons', 'usability_reasons'])
 ```
 
