@@ -144,7 +144,6 @@ def plotly_histogram(df, column):
     return fig
 
 
-
 def get_count_of_reasons(reasons_col, grouping_col=None):
     output_dict = {}
     for group in grouping_col.unique():
@@ -188,19 +187,14 @@ def plotly_heatmap(df, title):
 
 
 def plotly_upset_plot(df, title=None):
-    flag_cols = [
-        "freshness_flag",
-        "user_relevance_flag",
-        "usability_flag"
-    ]
-    
+    flag_cols = ["freshness_flag", "user_relevance_flag", "usability_flag"]
+
     # checks that at least two flags are present (nothing to plot otherwise)
     if (df[flag_cols].sum() > 0).sum() <= 1:
         return None
-        
+
     data = up.from_indicators(flag_cols, df)
     up.plot(data, sort_by="cardinality", min_degree=1, show_counts=True)
     fig = plt.gcf()
     plt.title(title)
     return fig
-        
